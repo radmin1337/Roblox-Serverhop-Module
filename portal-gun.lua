@@ -1,5 +1,5 @@
 --[[ 
-    RICK & MORTY PORTAL GUN - GITHUB DEPLOY
+    RICK & MORTY PORTAL GUN - OFFICIAL DEPLOY
     URL: https://raw.githubusercontent.com/radmin1337/serverhop/refs/heads/main/portal-gun.lua
 ]]
 
@@ -7,14 +7,13 @@ local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local ContentProvider = game:GetService("ContentProvider")
 
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
+local FRAME_TIME = 0.5
 local GITHUB_URL = "https://raw.githubusercontent.com/radmin1337/serverhop/refs/heads/main/portal-gun.lua"
-
--- Ждем загрузки
-if not game:IsLoaded() then game.Loaded:Wait() end
 
 -- --- ЗАГРУЗКА АССЕТА ---
 local portalGun = nil
@@ -38,63 +37,70 @@ end
 
 if not portalGun or not portalTemplate then return end
 
--- --- ФУНКЦИЯ ПОРТАЛА (ТАЙМИНГИ 0.5s и 1.0s) ---
-local function runPortal(p)
-    local guis = {p:WaitForChild("SurfaceGui1"), p:WaitForChild("SurfaceGui2")}
-    local lbs, ovs = {}, {}
+-- --- КАДРЫ АНИМАЦИИ ---
+local intro = {"rbxassetid://104651786116792", "rbxassetid://106781038483440"}
+local loopFrames = {"rbxassetid://112204270873166", "rbxassetid://136733250763134"}
+local outro = {"rbxassetid://74852451754370", "rbxassetid://135958825930181"}
 
-    for _, g in ipairs(guis) do
-        local b = g:WaitForChild("PortalLabel")
-        local o = b:Clone()
-        o.Parent = g; o.ZIndex = b.ZIndex + 1; o.ImageTransparency = 1
-        table.insert(lbs, b); table.insert(ovs, o)
+-- --- ЛОГИКА ВИЗУАЛА (ТВОИ ФУНКЦИИ ДЛЯ 2-Х СТОРОН) ---
+local function runPortalLogic(part)
+    local guis = {part:WaitForChild("SurfaceGui1"), part:WaitForChild("SurfaceGui2")}
+    local labels = {}
+    local overlays = {}
+
+    for _, gui in ipairs(guis) do
+        local base = gui:WaitForChild("PortalLabel")
+        local ov = base:Clone()
+        ov.Parent = base.Parent
+        ov.ZIndex = base.ZIndex + 1
+        ov.BackgroundTransparency = 1
+        ov.ImageTransparency = 1
+        table.insert(labels, base)
+        table.insert(overlays, ov)
     end
 
-    local function transition(id, duration)
-        for i, l in ipairs(lbs) do
-            ovs[i].Image = l.Image; ovs[i].ImageTransparency = 0
-            l.Image = id
-            TweenService:Create(ovs[i], TweenInfo.new(duration, Enum.EasingStyle.Linear), {ImageTransparency = 1}):Play()
+    local function fadeIn(imageId)
+        for _, lbl in ipairs(labels) do lbl.Image = imageId; lbl.ImageTransparency = 1 end
+        local tweens = {}
+        for _, lbl in ipairs(labels) do
+            table.insert(tweens, TweenService:Create(lbl, TweenInfo.new(FRAME_TIME/2, Enum.EasingStyle.Linear), {ImageTransparency = 0}))
         end
-        task.wait(duration)
+        for _, t in ipairs(tweens) do t:Play() end
+        tweens[1].Completed:Wait()
+        task.wait(FRAME_TIME/2)
     end
 
-    -- 1. Появление
-    for _, l in ipairs(lbs) do l.Image = "rbxassetid://104651786116792"; TweenService:Create(l, TweenInfo.new(0.3), {ImageTransparency = 0}):Play() end
-    task.wait(0.3)
-    
-    -- 2. Переключение середины (0.5s каждое)
-    transition("rbxassetid://106781038483440", 0.5)
-    transition("rbxassetid://112204270873166", 0.5)
-    transition("rbxassetid://136733250763134", 0.5)
+    local function normalTransition(newImage)
+        for i, lbl in ipairs(labels) do
+            overlays[i].Image = lbl.Image
+            overlays[i].ImageTransparency = 0
+            lbl.Image = newImage
+            TweenService:Create(overlays[i], TweenInfo.new(FRAME_TIME, Enum.EasingStyle.Linear), {ImageTransparency = 1}):Play()
+        end
+        task.wait(FRAME_TIME)
+    end
 
-    -- 3. Закрытие (1.0s каждое)
-    transition("rbxassetid://74852451754370", 1.0)
-    transition("rbxassetid://135958825930181", 1.0)
+    local function fadeOutLast(imageId)
+        for _, lbl in ipairs(labels) do lbl.Image = imageId; lbl.ImageTransparency = 0 end
+        task.wait(FRAME_TIME/2)
+        local tweens = {}
+        for _, lbl in ipairs(labels) do
+            table.insert(tweens, TweenService:Create(lbl, TweenInfo.new(FRAME_TIME/2, Enum.EasingStyle.Linear), {ImageTransparency = 1}))
+        end
+        for _, t in ipairs(tweens) do t:Play() end
+        tweens[1].Completed:Wait()
+    end
 
-    -- Исчезновение финального кадра
-    for _, l in ipairs(lbs) do TweenService:Create(l, TweenInfo.new(0.5), {ImageTransparency = 1}):Play() end
-    task.wait(0.5)
-    p:Destroy()
+    -- Сама анимация
+    fadeIn(intro[1])
+    normalTransition(intro[2])
+    for i = 1, 9 do
+        for _, id in ipairs(loopFrames) do normalTransition(id) end
+    end
+    normalTransition(outro[1])
+    fadeOutLast(outro[2])
+    part:Destroy()
 end
-
--- --- ЛОГИКА ВЫХОДА ---
-if not shared.SkipExit then
-    task.spawn(function()
-        local root = character:WaitForChild("HumanoidRootPart")
-        local ep = portalTemplate:Clone()
-        -- Спавн на 1 студ выше
-        ep.CFrame = root.CFrame * CFrame.new(0, 1, -2) 
-        ep.Parent = workspace
-        
-        local s = portalGun:FindFirstChild("PortalSound", true)
-        if s then s:Play() end
-        
-        humanoid:MoveTo((ep.CFrame * CFrame.new(0, 0, 7)).Position)
-        runPortal(ep)
-    end)
-end
-shared.SkipExit = nil -- Сбрасываем флаг
 
 -- --- ИНТЕРФЕЙС ---
 local sg = Instance.new("ScreenGui", player.PlayerGui)
@@ -121,43 +127,63 @@ Instance.new("UICorner", inJ)
 local btn = Instance.new("TextButton", frame)
 btn.Size = UDim2.new(0.7, 0, 0.2, 0); btn.Position = UDim2.new(0.15, 0, 0.78, 0); btn.BackgroundColor3 = Color3.new(1, 1, 1)
 btn.Text = "FIRE"; btn.Font = Enum.Font.SourceSansBold; btn.TextColor3 = Color3.new(0, 0, 0)
-Instance.new("UICorner", btn)
+Instance.new("UICorner", btn); local str = Instance.new("UIStroke", btn); str.Thickness = 2 -- Черная квадратная обводка
 
--- --- ЛОГИКА ПУШКИ ---
+-- --- ВЫСТРЕЛ ---
 local tool = portalGun:Clone()
 tool.Parent = player.Backpack
 local animId = (humanoid.RigType == Enum.HumanoidRigType.R15) and "rbxassetid://507768375" or "rbxassetid://182393478"
-local anim = Instance.new("Animation")
-anim.AnimationId = animId
-local track = humanoid:LoadAnimation(anim)
+local track = humanoid:LoadAnimation(Instance.new("Animation", tool))
+track.Animation.AnimationId = animId
 
 tool.Equipped:Connect(function() sg.Enabled = true; track:Play() end)
 tool.Unequipped:Connect(function() sg.Enabled = false; track:Stop() end)
 
 local function fire()
-    local snd = tool:FindFirstChild("PortalSound", true)
+    local snd = tool:FindFirstChild("PortalSound", true) or tool:FindFirstChild("Portal", true)
     if snd then snd:Play() end
 
     local p = portalTemplate:Clone()
     p.CFrame = character.HumanoidRootPart.CFrame * CFrame.new(0, 1, -6)
     p.Parent = workspace
 
-    local active = true
+    local teleported = false
     p.Touched:Connect(function(hit)
-        if active and hit.Parent == character then
-            active = false
+        if not teleported and hit.Parent == character then
+            teleported = true
             if queue_on_teleport then
                 queue_on_teleport([[
-                    pcall(function()
-                        loadstring(game:HttpGet("]]..GITHUB_URL..[["))()
-                    end)
+                    repeat task.wait() until game:IsLoaded()
+                    shared.IsPortalExit = true
+                    loadstring(game:HttpGet("]]..GITHUB_URL..[["))()
                 ]])
             end
-            TeleportService:TeleportToPlaceInstance(tonumber(inP.Text), inJ.Text, player)
+            local tP = tonumber(inP.Text) or game.PlaceId
+            local tJ = inJ.Text
+            if tJ ~= "" and tJ ~= game.JobId then TeleportService:TeleportToPlaceInstance(tP, tJ, player)
+            else TeleportService:Teleport(tP, player) end
         end
     end)
-    runPortal(p)
+    runPortalLogic(p)
 end
 
 btn.MouseButton1Click:Connect(fire)
 UserInputService.InputBegan:Connect(function(i, g) if not g and i.KeyCode == Enum.KeyCode.E and tool.Parent == character then fire() end end)
+
+-- --- ЛОГИКА ВЫХОДА ---
+if shared.IsPortalExit then
+    shared.IsPortalExit = nil
+    task.spawn(function()
+        repeat task.wait() until game:IsLoaded()
+        local root = character:WaitForChild("HumanoidRootPart")
+        local ep = portalTemplate:Clone()
+        ep.CFrame = root.CFrame * CFrame.new(0, 1, -2)
+        ep.Parent = workspace
+        
+        local snd = portalGun:FindFirstChild("PortalSound", true) or portalGun:FindFirstChild("Portal", true)
+        if snd then snd:Play() end
+        
+        humanoid:MoveTo((ep.CFrame * CFrame.new(0, 0, 7)).Position)
+        runPortalLogic(ep)
+    end)
+end
