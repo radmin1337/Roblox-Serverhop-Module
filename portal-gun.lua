@@ -1,5 +1,5 @@
 --[[ 
-    RICK & MORTY PORTAL GUN - OFFICIAL DEPLOY
+    RICK & MORTY PORTAL GUN - OFFICIAL DEPLOY (FIXED ANIMATION)
     URL: https://raw.githubusercontent.com/radmin1337/serverhop/refs/heads/main/portal-gun.lua
 ]]
 
@@ -42,7 +42,7 @@ local intro = {"rbxassetid://104651786116792", "rbxassetid://106781038483440"}
 local loopFrames = {"rbxassetid://112204270873166", "rbxassetid://136733250763134"}
 local outro = {"rbxassetid://74852451754370", "rbxassetid://135958825930181"}
 
--- --- ЛОГИКА ВИЗУАЛА (ТВОИ ФУНКЦИИ ДЛЯ 2-Х СТОРОН) ---
+-- --- ЛОГИКА ВИЗУАЛА (СИНХРОНИЗАЦИЯ СТОРОН) ---
 local function runPortalLogic(part)
     local guis = {part:WaitForChild("SurfaceGui1"), part:WaitForChild("SurfaceGui2")}
     local labels = {}
@@ -91,7 +91,7 @@ local function runPortalLogic(part)
         tweens[1].Completed:Wait()
     end
 
-    -- Сама анимация
+    -- Старт анимации
     fadeIn(intro[1])
     normalTransition(intro[2])
     for i = 1, 9 do
@@ -127,14 +127,18 @@ Instance.new("UICorner", inJ)
 local btn = Instance.new("TextButton", frame)
 btn.Size = UDim2.new(0.7, 0, 0.2, 0); btn.Position = UDim2.new(0.15, 0, 0.78, 0); btn.BackgroundColor3 = Color3.new(1, 1, 1)
 btn.Text = "FIRE"; btn.Font = Enum.Font.SourceSansBold; btn.TextColor3 = Color3.new(0, 0, 0)
-Instance.new("UICorner", btn); local str = Instance.new("UIStroke", btn); str.Thickness = 2 -- Черная квадратная обводка
+Instance.new("UICorner", btn)
+local btnStroke = Instance.new("UIStroke", btn)
+btnStroke.Thickness = 2
+btnStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
--- --- ВЫСТРЕЛ ---
+-- --- ЛОГИКА ОРУЖИЯ (ИСПРАВЛЕННАЯ АНИМАЦИЯ) ---
 local tool = portalGun:Clone()
 tool.Parent = player.Backpack
-local animId = (humanoid.RigType == Enum.HumanoidRigType.R15) and "rbxassetid://507768375" or "rbxassetid://182393478"
-local track = humanoid:LoadAnimation(Instance.new("Animation", tool))
-track.Animation.AnimationId = animId
+
+local anim = Instance.new("Animation")
+anim.AnimationId = (humanoid.RigType == Enum.HumanoidRigType.R15) and "rbxassetid://507768375" or "rbxassetid://182393478"
+local track = humanoid:LoadAnimation(anim) -- Теперь ID уже задан в объекте anim
 
 tool.Equipped:Connect(function() sg.Enabled = true; track:Play() end)
 tool.Unequipped:Connect(function() sg.Enabled = false; track:Stop() end)
