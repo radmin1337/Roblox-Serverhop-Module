@@ -1,7 +1,7 @@
 
 ---
 
-# Universal Opensource Roblox Serverhop Module
+# Roblox Serverhop Module
 **A robust, file-persistent Server Hopper designed for Roblox executors.** 
 
 This module allows your scripts to hop between servers efficiently while avoiding duplicates. It tracks visited servers using a local JSON file, ensuring you don't join the same server twice within the same hour.
